@@ -2,6 +2,7 @@ package qb_test
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/tjons/cassandra-toolbox/qb"
@@ -27,7 +28,7 @@ func runTests(t *testing.T, testCases []testCase) {
 			}
 
 			vals := tc.builder.QueryValues()
-			if vals == nil {
+			if len(vals) == 0 && len(tc.expectedValues) > 0 {
 				tt.Fatal("Failed to get query values")
 			}
 
@@ -35,11 +36,22 @@ func runTests(t *testing.T, testCases []testCase) {
 				tt.Fatalf("Expected %d query values, got %d", len(tc.expectedValues), len(vals))
 			}
 
-			for i, v := range vals {
-				if v != tc.expectedValues[i] {
-					tt.Fatalf("Expected value %v, got %v", tc.expectedValues[i], v)
-				}
-			}
+			checkQueryValues(tt, tc.builder, tc.expectedValues...)
 		})
+	}
+}
+
+func checkQueryValues(t *testing.T, stmt qb.QueryBuilder, expectedVals ...any) {
+	qvs := stmt.QueryValues()
+	if len(qvs) != len(expectedVals) {
+		t.Errorf("Expected %+v values in query, got %+v", qvs, expectedVals)
+	}
+
+	for i := range qvs {
+		if !reflect.DeepEqual(qvs[i], expectedVals[i]) {
+			t.Errorf(
+				"Expected query elements to be equal, failed at index %d. %+v does not equal %+v",
+				i, qvs[i], expectedVals[i])
+		}
 	}
 }
