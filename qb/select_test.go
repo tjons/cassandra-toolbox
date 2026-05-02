@@ -97,3 +97,12 @@ func checkQueryValues(t *testing.T, stmt qb.QueryBuilder, expectedVals ...any) {
 		}
 	}
 }
+
+func BenchmarkSelectAll(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		queryStr, _ := qb.NewSelect().From("test").Build()
+		if queryStr == "" {
+			b.Fatal("Failed to build query")
+		}
+	}
+}
