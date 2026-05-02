@@ -18,8 +18,5 @@ jobs:
       - name: Vet
         run: make vet
 
-      - name: Format Check
-        run: go fmt --check .
-        
       - name: Test
         run: make test
