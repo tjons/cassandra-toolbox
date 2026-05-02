@@ -38,6 +38,66 @@ func TestSelect(t *testing.T) {
 			expectedValues: []any{[]any{"a"}, []any{"a", "b"}, []any{"b"}},
 			expectedQuery:  `SELECT * FROM test WHERE column IN (?, ?, ?)`,
 		},
+		{
+			name:           "Select with where clause, less than operator",
+			builder:        qb.NewSelect().From("test").Column("entry_id").Where("entry_id", qb.LessThan("10")),
+			expectedValues: []any{"10"},
+			expectedQuery:  `SELECT entry_id FROM test WHERE entry_id < ?`,
+		},
+		{
+			name:           "Select with where clause, greater than operator",
+			builder:        qb.NewSelect().From("test").Column("entry_id").Where("entry_id", qb.GreaterThan("10")),
+			expectedValues: []any{"10"},
+			expectedQuery:  `SELECT entry_id FROM test WHERE entry_id > ?`,
+		},
+		{
+			name:           "Select with where clause, less than or equal operator",
+			builder:        qb.NewSelect().From("test").Column("entry_id").Where("entry_id", qb.LessThanEqual("10")),
+			expectedValues: []any{"10"},
+			expectedQuery:  `SELECT entry_id FROM test WHERE entry_id <= ?`,
+		},
+		{
+			name:           "Select with where clause, greater than or equal operator",
+			builder:        qb.NewSelect().From("test").Column("entry_id").Where("entry_id", qb.GreaterThanEqual("10")),
+			expectedValues: []any{"10"},
+			expectedQuery:  `SELECT entry_id FROM test WHERE entry_id >= ?`,
+		},
+		{
+			name:           "Select with where clause, contains operator",
+			builder:        qb.NewSelect().From("test").Column("entry_id").Where("entry_id", qb.Contains("10")),
+			expectedValues: []any{"10"},
+			expectedQuery:  `SELECT entry_id FROM test WHERE entry_id CONTAINS ?`,
+		},
+		{
+			name:           "Select with per partition limit",
+			builder:        qb.NewSelect().From("test").Column("entry_id").PerPartitionLimit(5),
+			expectedValues: []any{},
+			expectedQuery:  `SELECT entry_id FROM test PER PARTITION LIMIT 5`,
+		},
+		{
+			name:           "Select with per partition limit and where clause",
+			builder:        qb.NewSelect().From("test").Column("entry_id").PerPartitionLimit(5).Where("entry_id", qb.Equals("1")),
+			expectedValues: []any{"1"},
+			expectedQuery:  `SELECT entry_id FROM test WHERE entry_id = ? PER PARTITION LIMIT 5`,
+		},
+		{
+			name:           "Select with limit",
+			builder:        qb.NewSelect().From("test").Column("entry_id").Limit(5),
+			expectedValues: []any{},
+			expectedQuery:  `SELECT entry_id FROM test LIMIT 5`,
+		},
+		{
+			name:           "Select with limit and where clause",
+			builder:        qb.NewSelect().From("test").Column("entry_id").Limit(5).Where("entry_id", qb.Equals("1")),
+			expectedValues: []any{"1"},
+			expectedQuery:  `SELECT entry_id FROM test WHERE entry_id = ? LIMIT 5`,
+		},
+		{
+			name:           "Select with limit, where clause, and per partition limit",
+			builder:        qb.NewSelect().From("test").Column("entry_id").Limit(5).Where("entry_id", qb.Equals("1")).PerPartitionLimit(1),
+			expectedValues: []any{"1"},
+			expectedQuery:  `SELECT entry_id FROM test WHERE entry_id = ? PER PARTITION LIMIT 1 LIMIT 5`,
+		},
 	}
 
 	runTests(t, cases)
