@@ -77,9 +77,9 @@ func (b *selectBuilder) Build() (string, error) {
 
 func buildSelectFrom(b *selectBuilder) (string, error) {
 	q := strings.Builder{}
-	q.WriteString("SELECT ")
+	q.WriteString(SelectFragment)
 	if b.isDistinct {
-		q.WriteString("DISTINCT ")
+		q.WriteString(DistinctFragment)
 	}
 
 	for i, col := range b.cols { // ordinal is important for scanning
@@ -92,20 +92,20 @@ func buildSelectFrom(b *selectBuilder) (string, error) {
 		q.WriteString("*")
 	}
 
-	q.WriteString(" FROM ")
+	q.WriteString(FromFragment)
 	q.WriteString(b.table)
 
 	for i := range b.filterTerms {
 		if i == 0 {
-			q.WriteString(" WHERE ")
+			q.WriteString(WhereFragment)
 		} else {
-			q.WriteString(" AND ")
+			q.WriteString(AndFragment)
 		}
 
 		q.WriteString(b.filterTerms[i].column)
-		q.WriteString(" ")
+		q.WriteString(SpaceFragment)
 		q.WriteString(string(b.filterTerms[i].operator))
-		q.WriteString(" ")
+		q.WriteString(SpaceFragment)
 
 		switch {
 		case b.filterTerms[i].value != nil:
@@ -136,12 +136,12 @@ func buildSelectFrom(b *selectBuilder) (string, error) {
 	}
 
 	if b.limit > 0 {
-		q.WriteString(" LIMIT ")
+		q.WriteString(LimitFragment)
 		q.WriteString(strconv.Itoa(int(b.limit)))
 	}
 
 	if b.allowFiltering {
-		q.WriteString(" ALLOW FILTERING")
+		q.WriteString(AllowFilteringFragment)
 	}
 
 	// TODO(tjons): grab these builders from a mempool

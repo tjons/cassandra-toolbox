@@ -56,10 +56,12 @@ func (b *deleteBuilder) Build() (string, error) {
 func buildDeleteFrom(b *deleteBuilder) (string, error) {
 	var sb strings.Builder
 
-	sb.WriteString("DELETE ")
+	sb.WriteString("DELETE")
 	for i := range b.columns {
 		if i > 0 {
 			sb.WriteString(", ")
+		} else {
+			sb.WriteString(" ")
 		}
 		sb.WriteString(b.columns[i])
 	}
