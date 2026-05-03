@@ -65,14 +65,14 @@ func GreaterThan(value any) filterTerm {
 
 func LessThanEqual(value any) filterTerm {
 	return filterTerm{
-		operator: LtOperator,
+		operator: LteOperator,
 		value:    value,
 	}
 }
 
 func GreaterThanEqual(value any) filterTerm {
 	return filterTerm{
-		operator: GtOperator,
+		operator: GteOperator,
 		value:    value,
 	}
 }

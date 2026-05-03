@@ -7,16 +7,23 @@ import (
 )
 
 type selectBuilder struct {
-	cols            []string
-	retrieveColumns map[string]struct{}
-	verb            QueryType
-	table           string
-	filterTerms     []*filterTerm
-	limit           uint
-	values          []any
-	queryValues     []any
-	allowFiltering  bool
-	isDistinct      bool
+	cols              []string
+	retrieveColumns   map[string]struct{}
+	verb              QueryType
+	table             string
+	filterTerms       []*filterTerm
+	limit             uint
+	perPartitionLimit uint
+	values            []any
+	queryValues       []any
+	allowFiltering    bool
+	isDistinct        bool
+}
+
+func (b *selectBuilder) PerPartitionLimit(num uint) SelectBuilder {
+	b.perPartitionLimit = num
+
+	return b
 }
 
 func (b *selectBuilder) Column(name string) SelectBuilder {
@@ -135,6 +142,11 @@ func buildSelectFrom(b *selectBuilder) (string, error) {
 		}
 	}
 
+	if b.perPartitionLimit > 0 {
+		q.WriteString(PerPartitionLimitFragment)
+		q.WriteString(strconv.Itoa(int(b.perPartitionLimit)))
+	}
+
 	if b.limit > 0 {
 		q.WriteString(LimitFragment)
 		q.WriteString(strconv.Itoa(int(b.limit)))
@@ -171,6 +183,7 @@ type SelectBuilder interface {
 	Columns([]string) SelectBuilder
 	From(string) SelectBuilder
 	Where(string, filterTerm) SelectBuilder
+	PerPartitionLimit(uint) SelectBuilder
 	Limit(uint) SelectBuilder
 	AllowFiltering() SelectBuilder
 }

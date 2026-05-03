@@ -1,101 +1,106 @@
 package qb_test
 
 import (
-	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/tjons/cassandra-toolbox/qb"
 )
 
-func TestSelectAll(t *testing.T) {
-	expected := `SELECT * FROM test`
-	stmt := qb.NewSelect().From("test")
-
-	queryStr, _ := stmt.Build()
-
-	if queryStr != expected {
-		t.Error(failureFormatter(expected, queryStr))
+func TestSelect(t *testing.T) {
+	cases := []testCase{
+		{
+			name:           "Select all",
+			expectedQuery:  `SELECT * FROM test`,
+			builder:        qb.NewSelect().From("test"),
+			expectedValues: []any{},
+		},
+		{
+			name:           "Select single column",
+			expectedQuery:  `SELECT entry_id FROM test`,
+			builder:        qb.NewSelect().From("test").Column("entry_id"),
+			expectedValues: []any{},
+		},
+		{
+			name:           "Select with where clause",
+			builder:        qb.NewSelect().From("test").Column("entry_id").Where("entry_id", qb.Equals("1")),
+			expectedValues: []any{"1"},
+			expectedQuery:  `SELECT entry_id FROM test WHERE entry_id = ?`,
+		},
+		{
+			name:           "Select with where clause, IN operator, and multiple values",
+			builder:        qb.NewSelect().From("test").Column("entry_id").Where("entry_id", qb.In("1", "2", "3")),
+			expectedValues: []any{"1", "2", "3"},
+			expectedQuery:  `SELECT entry_id FROM test WHERE entry_id IN (?, ?, ?)`,
+		},
+		{
+			name:           "Select all where IN",
+			builder:        qb.NewSelect().From("test").Where("column", qb.CollectionIn([]any{"a"}, []any{"a", "b"}, []any{"b"})),
+			expectedValues: []any{[]any{"a"}, []any{"a", "b"}, []any{"b"}},
+			expectedQuery:  `SELECT * FROM test WHERE column IN (?, ?, ?)`,
+		},
+		{
+			name:           "Select with where clause, less than operator",
+			builder:        qb.NewSelect().From("test").Column("entry_id").Where("entry_id", qb.LessThan("10")),
+			expectedValues: []any{"10"},
+			expectedQuery:  `SELECT entry_id FROM test WHERE entry_id < ?`,
+		},
+		{
+			name:           "Select with where clause, greater than operator",
+			builder:        qb.NewSelect().From("test").Column("entry_id").Where("entry_id", qb.GreaterThan("10")),
+			expectedValues: []any{"10"},
+			expectedQuery:  `SELECT entry_id FROM test WHERE entry_id > ?`,
+		},
+		{
+			name:           "Select with where clause, less than or equal operator",
+			builder:        qb.NewSelect().From("test").Column("entry_id").Where("entry_id", qb.LessThanEqual("10")),
+			expectedValues: []any{"10"},
+			expectedQuery:  `SELECT entry_id FROM test WHERE entry_id <= ?`,
+		},
+		{
+			name:           "Select with where clause, greater than or equal operator",
+			builder:        qb.NewSelect().From("test").Column("entry_id").Where("entry_id", qb.GreaterThanEqual("10")),
+			expectedValues: []any{"10"},
+			expectedQuery:  `SELECT entry_id FROM test WHERE entry_id >= ?`,
+		},
+		{
+			name:           "Select with where clause, contains operator",
+			builder:        qb.NewSelect().From("test").Column("entry_id").Where("entry_id", qb.Contains("10")),
+			expectedValues: []any{"10"},
+			expectedQuery:  `SELECT entry_id FROM test WHERE entry_id CONTAINS ?`,
+		},
+		{
+			name:           "Select with per partition limit",
+			builder:        qb.NewSelect().From("test").Column("entry_id").PerPartitionLimit(5),
+			expectedValues: []any{},
+			expectedQuery:  `SELECT entry_id FROM test PER PARTITION LIMIT 5`,
+		},
+		{
+			name:           "Select with per partition limit and where clause",
+			builder:        qb.NewSelect().From("test").Column("entry_id").PerPartitionLimit(5).Where("entry_id", qb.Equals("1")),
+			expectedValues: []any{"1"},
+			expectedQuery:  `SELECT entry_id FROM test WHERE entry_id = ? PER PARTITION LIMIT 5`,
+		},
+		{
+			name:           "Select with limit",
+			builder:        qb.NewSelect().From("test").Column("entry_id").Limit(5),
+			expectedValues: []any{},
+			expectedQuery:  `SELECT entry_id FROM test LIMIT 5`,
+		},
+		{
+			name:           "Select with limit and where clause",
+			builder:        qb.NewSelect().From("test").Column("entry_id").Limit(5).Where("entry_id", qb.Equals("1")),
+			expectedValues: []any{"1"},
+			expectedQuery:  `SELECT entry_id FROM test WHERE entry_id = ? LIMIT 5`,
+		},
+		{
+			name:           "Select with limit, where clause, and per partition limit",
+			builder:        qb.NewSelect().From("test").Column("entry_id").Limit(5).Where("entry_id", qb.Equals("1")).PerPartitionLimit(1),
+			expectedValues: []any{"1"},
+			expectedQuery:  `SELECT entry_id FROM test WHERE entry_id = ? PER PARTITION LIMIT 1 LIMIT 5`,
+		},
 	}
-}
 
-func TestSelectSingleColumn(t *testing.T) {
-	expected := `SELECT entry_id FROM test`
-	stmt := qb.NewSelect().From("test").Column("entry_id")
-
-	queryStr, _ := stmt.Build()
-	if queryStr != expected {
-		t.Error(failureFormatter(expected, queryStr))
-	}
-
-	vals := stmt.QueryValues()
-	if len(vals) != 0 {
-		t.Errorf("expected %d values returned from query, got %d", 0, len(vals))
-	}
-}
-
-func failureFormatter(expected, actual string) string {
-	b := strings.Builder{}
-	b.WriteString("\n\nExpected:\n\t")
-	b.WriteString(expected)
-
-	b.WriteString("\n\nActual:\n\t")
-	b.WriteString(actual)
-
-	return b.String()
-}
-
-func TestSelectSingleColumnSingleWhere(t *testing.T) {
-	expected := `SELECT entry_id FROM test WHERE entry_id = ?`
-	stmt := qb.NewSelect().From("test").Column("entry_id").Where("entry_id", qb.Equals("1"))
-
-	queryStr, _ := stmt.Build()
-	if queryStr != expected {
-		t.Error(failureFormatter(expected, queryStr))
-	}
-
-	checkQueryValues(t, stmt, "1")
-}
-
-func TestSelectAllWhereIn(t *testing.T) {
-	stmt := qb.NewSelect().From("test").Where("column", qb.In("a", "b", "c"))
-	expected := `SELECT * FROM test WHERE column IN (?, ?, ?)`
-	expectedVals := []any{"a", "b", "c"}
-
-	queryStr, _ := stmt.Build()
-	if expected != queryStr {
-		t.Error(failureFormatter(expected, queryStr))
-	}
-
-	checkQueryValues(t, stmt, expectedVals...)
-}
-
-func TestSelectAllWhereCollectionIn(t *testing.T) {
-	stmt := qb.NewSelect().From("test").Where("column", qb.CollectionIn([]any{"a"}, []any{"a", "b"}, []any{"b"}))
-	expected := `SELECT * FROM test WHERE column IN (?, ?, ?)`
-	expectedVals := []any{[]any{"a"}, []any{"a", "b"}, []any{"b"}}
-
-	queryStr, _ := stmt.Build()
-	if expected != queryStr {
-		t.Error(failureFormatter(expected, queryStr))
-	}
-
-	checkQueryValues(t, stmt, expectedVals...)
-}
-
-func checkQueryValues(t *testing.T, stmt qb.QueryBuilder, expectedVals ...any) {
-	qvs := stmt.QueryValues()
-	if len(qvs) != len(expectedVals) {
-		t.Errorf("Expected %+v values in query, got %+v", qvs, expectedVals)
-	}
-
-	for i := range qvs {
-		if !reflect.DeepEqual(qvs[i], expectedVals[i]) {
-			t.Errorf(
-				"Expected query elements to be equal, failed at index %d. %+v does not equal %+v",
-				i, qvs[i], expectedVals[i])
-		}
-	}
+	runTests(t, cases)
 }
 
 func BenchmarkSelectAll(b *testing.B) {
