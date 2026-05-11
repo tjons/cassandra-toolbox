@@ -1,12 +1,16 @@
 package qb
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 type DeleteBuilder interface {
 	QueryBuilder
 
 	Column(column string) DeleteBuilder
 	From(table string) DeleteBuilder
+	Using(updateParam) DeleteBuilder
 	Where(column string, ft filterTerm) DeleteBuilder
 	IfExists() DeleteBuilder
 	Build() (string, error)
@@ -15,6 +19,7 @@ type DeleteBuilder interface {
 type deleteBuilder struct {
 	columns     []string
 	table       string
+	using       []updateParam
 	filterTerms []*filterTerm
 	ifExists    bool
 	queryValues []any
@@ -27,6 +32,11 @@ func NewDelete() DeleteBuilder {
 func (b *deleteBuilder) Column(column string) DeleteBuilder {
 	b.columns = append(b.columns, column)
 
+	return b
+}
+
+func (b *deleteBuilder) Using(param updateParam) DeleteBuilder {
+	b.using = append(b.using, param)
 	return b
 }
 
@@ -67,6 +77,18 @@ func buildDeleteFrom(b *deleteBuilder) (string, error) {
 	}
 	sb.WriteString(" FROM ")
 	sb.WriteString(b.table)
+
+	// TODO(tjons): refactor this into a common function if possible
+	for i := range b.using {
+		if i == 0 {
+			sb.WriteString(UsingFragment)
+		} else {
+			sb.WriteString(AndFragment)
+		}
+		sb.WriteString(string(b.using[i].T))
+		sb.WriteString(SpaceFragment)
+		sb.WriteString(strconv.FormatInt(b.using[i].Arg, 10))
+	}
 
 	for i := range b.filterTerms {
 		if i == 0 {

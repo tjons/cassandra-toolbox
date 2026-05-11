@@ -3,14 +3,15 @@ package qb
 type Operator string
 
 const (
-	EqualOperator    Operator = "="
-	InOperator       Operator = "IN"
-	ContainsOperator Operator = "CONTAINS"
-	NeqOperator      Operator = "!="
-	LtOperator       Operator = "<"
-	GtOperator       Operator = ">"
-	LteOperator      Operator = "<="
-	GteOperator      Operator = ">="
+	EqualOperator       Operator = "="
+	LtOperator          Operator = "<"
+	GtOperator          Operator = ">"
+	LteOperator         Operator = "<="
+	GteOperator         Operator = ">="
+	NeqOperator         Operator = "!="
+	InOperator          Operator = "IN"
+	ContainsOperator    Operator = "CONTAINS"
+	ContainsKeyOperator Operator = "CONTAINS KEY"
 )
 
 type filterTerm struct {
@@ -45,6 +46,13 @@ func CollectionIn(values ...[]any) filterTerm {
 func Contains(value any) filterTerm {
 	return filterTerm{
 		operator: ContainsOperator,
+		value:    value,
+	}
+}
+
+func ContainsKey(value any) filterTerm {
+	return filterTerm{
+		operator: ContainsKeyOperator,
 		value:    value,
 	}
 }
