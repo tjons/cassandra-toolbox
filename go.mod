@@ -2,7 +2,7 @@ module github.com/tjons/cassandra-toolbox
 
 go 1.24.0
 
-toolchain go1.24.2
+toolchain go1.26.2
 
 require (
 	github.com/apache/cassandra-gocql-driver/v2 v2.0.0
