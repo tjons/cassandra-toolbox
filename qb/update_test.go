@@ -32,6 +32,12 @@ func TestUpdate(t *testing.T) {
 			builder:        qb.NewUpdate().Table("test").Set("column", "value").Where("id", qb.Equals("1")).IfExists(),
 			expectedValues: []any{"value", "1"},
 		},
+		{
+			name:           "Update with USING TTL",
+			expectedQuery:  "UPDATE test USING TTL 3600 SET column = ? WHERE id = ?",
+			builder:        qb.NewUpdate().Table("test").Using(qb.TTL(3600)).Set("column", 1).Where("id", qb.Equals(1)),
+			expectedValues: []any{1, 1},
+		},
 	}
 
 	runTests(t, testCases)

@@ -1,10 +1,14 @@
 package qb
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 type UpdateBuilder interface {
 	QueryBuilder
 
+	Using(updateParam) UpdateBuilder
 	Table(name string) UpdateBuilder
 	Set(column string, value any) UpdateBuilder
 	Where(condition string, value filterTerm) UpdateBuilder
@@ -14,6 +18,7 @@ type UpdateBuilder interface {
 
 type updateBuilder struct {
 	table        string
+	using        []updateParam
 	columns      []string
 	columnValues []any
 	conditions   []filterTerm
@@ -27,6 +32,11 @@ func NewUpdate() UpdateBuilder {
 
 func (b *updateBuilder) Table(name string) UpdateBuilder {
 	b.table = name
+	return b
+}
+
+func (b *updateBuilder) Using(param updateParam) UpdateBuilder {
+	b.using = append(b.using, param)
 	return b
 }
 
@@ -82,6 +92,19 @@ func buildUpdateFrom(b *updateBuilder) (string, error) {
 	sb := strings.Builder{}
 	sb.WriteString("UPDATE ")
 	sb.WriteString(b.table)
+
+	// TODO(tjons): refactor this into a common function if possible
+	for i := range b.using {
+		if i == 0 {
+			sb.WriteString(UsingFragment)
+		} else {
+			sb.WriteString(AndFragment)
+		}
+		sb.WriteString(string(b.using[i].T))
+		sb.WriteString(SpaceFragment)
+		sb.WriteString(strconv.FormatInt(b.using[i].Arg, 10))
+	}
+
 	sb.WriteString(" SET ")
 	for i := range b.columns {
 		if i > 0 {
@@ -127,6 +150,7 @@ func buildUpdateFrom(b *updateBuilder) (string, error) {
 	}
 
 	if b.ifExists {
+		// TODO(tjons): support conditional check
 		sb.WriteString(" IF EXISTS")
 	}
 

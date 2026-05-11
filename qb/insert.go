@@ -1,6 +1,9 @@
 package qb
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 type InsertBuilder interface {
 	QueryBuilder
@@ -9,12 +12,14 @@ type InsertBuilder interface {
 	Columns(columns ...string) InsertBuilder
 	Values(values ...any) InsertBuilder
 	IfNotExists() InsertBuilder
+	Using(updateParam) InsertBuilder
 	Build() (string, error)
 }
 
 type insertBuilder struct {
 	table       string
 	columns     []string
+	using       []updateParam
 	values      []any
 	ifNotExists bool
 }
@@ -25,6 +30,11 @@ func NewInsert() InsertBuilder {
 
 func (b *insertBuilder) Into(table string) InsertBuilder {
 	b.table = table
+	return b
+}
+
+func (b *insertBuilder) Using(param updateParam) InsertBuilder {
+	b.using = append(b.using, param)
 	return b
 }
 
@@ -94,6 +104,18 @@ func buildInsertFrom(b *insertBuilder) (string, error) {
 
 	if b.ifNotExists {
 		sb.WriteString(" IF NOT EXISTS")
+	}
+
+	// TODO(tjons): refactor this into a common function if possible
+	for i := range b.using {
+		if i == 0 {
+			sb.WriteString(UsingFragment)
+		} else {
+			sb.WriteString(AndFragment)
+		}
+		sb.WriteString(string(b.using[i].T))
+		sb.WriteString(SpaceFragment)
+		sb.WriteString(strconv.FormatInt(b.using[i].Arg, 10))
 	}
 
 	return sb.String(), nil

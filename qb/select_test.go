@@ -98,6 +98,18 @@ func TestSelect(t *testing.T) {
 			expectedValues: []any{"1"},
 			expectedQuery:  `SELECT entry_id FROM test WHERE entry_id = ? PER PARTITION LIMIT 1 LIMIT 5`,
 		},
+		{
+			name:           "Select with WRITETIME and TTL",
+			builder:        qb.NewSelect().Column(qb.Writetime("a")).Column(qb.Ttl("b")).From("table"),
+			expectedValues: []any{},
+			expectedQuery:  `SELECT WRITETIME(a), TTL(b) FROM table`,
+		},
+		{
+			name:           "Select with MAXWRITETIME and a named column",
+			builder:        qb.NewSelect().Column("a").Column(qb.MaxWritetime("b")).From("table1"),
+			expectedValues: []any{},
+			expectedQuery:  `SELECT a, MAXWRITETIME(b) FROM table1`,
+		},
 	}
 
 	runTests(t, cases)

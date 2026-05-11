@@ -7,8 +7,12 @@ import (
 )
 
 type selectBuilder struct {
-	cols              []string
-	retrieveColumns   map[string]struct{}
+	cols []string
+
+	// retrieveColumns is a map of requested columns: potential aliases.
+	// if no alias is set for a given column, the key will have an empty
+	// value.
+	retrieveColumns   map[string]string
 	verb              QueryType
 	table             string
 	filterTerms       []*filterTerm
@@ -18,6 +22,15 @@ type selectBuilder struct {
 	queryValues       []any
 	allowFiltering    bool
 	isDistinct        bool
+	isJson            bool
+	orderBy           []orderByClause
+	groupBy           []string
+}
+
+func (b *selectBuilder) Json() SelectBuilder {
+	b.isJson = true
+
+	return b
 }
 
 func (b *selectBuilder) PerPartitionLimit(num uint) SelectBuilder {
@@ -28,14 +41,29 @@ func (b *selectBuilder) PerPartitionLimit(num uint) SelectBuilder {
 
 func (b *selectBuilder) Column(name string) SelectBuilder {
 	if b.retrieveColumns == nil {
-		b.retrieveColumns = make(map[string]struct{})
+		b.retrieveColumns = make(map[string]string)
 	}
 
 	if _, exists := b.retrieveColumns[name]; exists {
 		return b
 	}
 
-	b.retrieveColumns[name] = struct{}{}
+	b.retrieveColumns[name] = ""
+	b.cols = append(b.cols, name)
+
+	return b
+}
+
+func (b *selectBuilder) ColumnAs(name, alias string) SelectBuilder {
+	if b.retrieveColumns == nil {
+		b.retrieveColumns = make(map[string]string)
+	}
+
+	if setAlias, exists := b.retrieveColumns[name]; exists && setAlias == alias {
+		return b
+	}
+
+	b.retrieveColumns[name] = alias
 	b.cols = append(b.cols, name)
 
 	return b
@@ -43,7 +71,7 @@ func (b *selectBuilder) Column(name string) SelectBuilder {
 
 func (b *selectBuilder) Columns(names []string) SelectBuilder {
 	if b.retrieveColumns == nil {
-		b.retrieveColumns = make(map[string]struct{})
+		b.retrieveColumns = make(map[string]string)
 	}
 
 	for _, name := range names {
@@ -87,6 +115,8 @@ func buildSelectFrom(b *selectBuilder) (string, error) {
 	q.WriteString(SelectFragment)
 	if b.isDistinct {
 		q.WriteString(DistinctFragment)
+	} else if b.isJson {
+		q.WriteString(JsonFragment)
 	}
 
 	for i, col := range b.cols { // ordinal is important for scanning
@@ -94,6 +124,10 @@ func buildSelectFrom(b *selectBuilder) (string, error) {
 			q.WriteString(", ")
 		}
 		q.WriteString(col)
+		if alias, ok := b.retrieveColumns[col]; ok && alias != "" {
+			q.WriteString(" AS ")
+			q.WriteString(alias)
+		}
 	}
 	if len(b.cols) == 0 {
 		q.WriteString("*")
@@ -142,6 +176,30 @@ func buildSelectFrom(b *selectBuilder) (string, error) {
 		}
 	}
 
+	if len(b.groupBy) > 0 {
+		q.WriteString(GroupByFragment)
+
+		for i, col := range b.groupBy {
+			if i > 0 {
+				q.WriteString(", ")
+			}
+			q.WriteString(col)
+		}
+	}
+
+	if len(b.orderBy) > 0 {
+		q.WriteString(OrderByFragment)
+
+		for i, term := range b.orderBy {
+			if i > 0 {
+				q.WriteString(", ")
+			}
+			q.WriteString(term.column)
+			q.WriteString(" ")
+			q.WriteString(string(term.dir))
+		}
+	}
+
 	if b.perPartitionLimit > 0 {
 		q.WriteString(PerPartitionLimitFragment)
 		q.WriteString(strconv.Itoa(int(b.perPartitionLimit)))
@@ -175,19 +233,77 @@ func (b *selectBuilder) QueryValues() []any {
 	return b.queryValues
 }
 
+func (b *selectBuilder) GroupBy(cols ...string) SelectBuilder {
+	b.groupBy = cols
+
+	return b
+}
+
+func (b *selectBuilder) OrderBy(terms ...orderByClause) SelectBuilder {
+	b.orderBy = terms
+
+	return b
+}
+
+type direction string
+
+const (
+	Asc  direction = "ASC"
+	Desc direction = "DESC"
+)
+
+type orderByClause struct {
+	column string
+	dir    direction
+}
+
 type SelectBuilder interface {
 	QueryBuilder
 
 	Distinct() SelectBuilder
+	Json() SelectBuilder
+	ColumnAs(string, string) SelectBuilder
 	Column(string) SelectBuilder
 	Columns([]string) SelectBuilder
 	From(string) SelectBuilder
 	Where(string, filterTerm) SelectBuilder
 	PerPartitionLimit(uint) SelectBuilder
 	Limit(uint) SelectBuilder
+	OrderBy(...orderByClause) SelectBuilder
+	GroupBy(...string) SelectBuilder
 	AllowFiltering() SelectBuilder
 }
 
 func NewSelect() SelectBuilder {
 	return &selectBuilder{verb: Select}
+}
+
+func Writetime(column string) string {
+	sb := strings.Builder{}
+	sb.WriteString(WritetimeFragment)
+	sb.WriteString(OpenParenFragment)
+	sb.WriteString(column)
+	sb.WriteString(CloseParenFragment)
+
+	return sb.String()
+}
+
+func MaxWritetime(column string) string {
+	sb := strings.Builder{}
+	sb.WriteString(MaxWritetimeFragment)
+	sb.WriteString(OpenParenFragment)
+	sb.WriteString(column)
+	sb.WriteString(CloseParenFragment)
+
+	return sb.String()
+}
+
+func Ttl(column string) string {
+	sb := strings.Builder{}
+	sb.WriteString(TTLFragment)
+	sb.WriteString(OpenParenFragment)
+	sb.WriteString(column)
+	sb.WriteString(CloseParenFragment)
+
+	return sb.String()
 }
