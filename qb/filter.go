@@ -29,10 +29,15 @@ func Equals(value any) filterTerm {
 	}
 }
 
-func In(values ...any) filterTerm {
+func In[T any](values ...T) filterTerm {
+	anyValues := make([]any, len(values))
+	for i, v := range values {
+		anyValues[i] = v
+	}
+
 	return filterTerm{
 		operator: InOperator,
-		values:   values,
+		values:   anyValues,
 	}
 }
 
