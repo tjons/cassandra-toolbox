@@ -17,11 +17,13 @@ type DeleteBuilder interface {
 
 	// Using specifies an optional USING clause for the DELETE query.
 	// This can be used to specify a USING TIMESTAMP clause.
-	// Multiple USING clauses can be specified, and they will be joined with AND in the resulting query.
+	// Multiple USING clauses can be specified, and they will be joined
+	// with AND in the resulting query.
 	// They will be added to the query in the order they were specified.
 	Using(updateParam) DeleteBuilder
 
-	// Where specifies a condition for the DELETE query. Multiple calls to Where will be joined with AND in the resulting query.
+	// Where specifies a condition for the DELETE query. Multiple calls to
+	// Where will be joined with AND in the resulting query.
 	Where(column string, ft filterTerm) DeleteBuilder
 
 	// IfExists specifies that the DELETE query should include an IF EXISTS clause.
@@ -51,7 +53,8 @@ func (b *deleteBuilder) Column(column string) DeleteBuilder {
 
 // Using specifies an optional USING clause for the DELETE query.
 // This can be used to specify a USING TIMESTAMP clause.
-// Multiple USING clauses can be specified, and they will be joined with AND in the resulting query.
+// Multiple USING clauses can be specified, and they will be joined
+// with AND in the resulting query.
 // They will be added to the query in the order they were specified.
 func (b *deleteBuilder) Using(param updateParam) DeleteBuilder {
 	b.using = append(b.using, param)
@@ -72,7 +75,8 @@ func (b *deleteBuilder) From(table string) DeleteBuilder {
 	return b
 }
 
-// Where specifies a condition for the DELETE query. Multiple calls to Where will be joined with AND in the resulting query.
+// Where specifies a condition for the DELETE query.
+// Multiple calls to Where will be joined with AND in the resulting query.
 func (b *deleteBuilder) Where(column string, ft filterTerm) DeleteBuilder {
 	ft.column = column
 	b.filterTerms = append(b.filterTerms, &ft)
@@ -80,7 +84,8 @@ func (b *deleteBuilder) Where(column string, ft filterTerm) DeleteBuilder {
 	return b
 }
 
-// Build builds the CQL query string for the delete statement and returns it along with any error that occurred during the build process.
+// Build builds the CQL query string for the delete statement
+// and returns it along with any error that occurred during the build process.
 func (b *deleteBuilder) Build() (string, error) {
 	return buildDeleteFrom(b)
 }
@@ -164,7 +169,8 @@ func buildDeleteFrom(b *deleteBuilder) (string, error) {
 	return sb.String(), nil
 }
 
-// QueryValues returns the values to be used in the query, in the order they were provided.
+// QueryValues returns the values to be used in the query,
+// in the order they were provided.
 func (b *deleteBuilder) QueryValues() []any {
 	return b.queryValues
 }

@@ -11,17 +11,20 @@ type UpdateBuilder interface {
 
 	// Using specifies an optional USING clause for the UPDATE query.
 	// This can be used to specify a USING TIMESTAMP or USING TTL clause.
-	// Multiple USING clauses can be specified, and they will be joined with AND in the resulting query.
+	// Multiple USING clauses can be specified, and they will be joined
+	// with AND in the resulting query.
 	// They will be added to the query in the order they were specified.
 	Using(updateParam) UpdateBuilder
 
 	// Table specifies the table to update.
 	Table(name string) UpdateBuilder
 
-	// Set specifies a column to update and the value to update it to. Multiple calls to Set will add multiple columns to the SET clause of the UPDATE query.
+	// Set specifies a column to update and the value to update it to.
+	// Multiple calls to Set will add multiple columns to the SET clause of the UPDATE query.
 	Set(column string, value any) UpdateBuilder
 
-	// Where specifies a condition for the UPDATE query. Multiple calls to Where will be joined with AND in the resulting query.
+	// Where specifies a condition for the UPDATE query.
+	// Multiple calls to Where will be joined with AND in the resulting query.
 	Where(condition string, value filterTerm) UpdateBuilder
 
 	// IfExists specifies that the UPDATE query should include an IF EXISTS clause.
@@ -49,22 +52,27 @@ func (b *updateBuilder) Table(name string) UpdateBuilder {
 	return b
 }
 
-// Using specifies an optional USING clause for the UPDATE query. This can be used to specify a USING TIMESTAMP or USING TTL clause.
-// Multiple USING clauses can be specified, and they will be joined with AND in the resulting query.
+// Using specifies an optional USING clause for the UPDATE query.
+// This can be used to specify a USING TIMESTAMP or USING TTL clause.
+// Multiple USING clauses can be specified, and they will be joined
+// with AND in the resulting query.
 // They will be added to the query in the order they were specified.
 func (b *updateBuilder) Using(param updateParam) UpdateBuilder {
 	b.using = append(b.using, param)
 	return b
 }
 
-// Set specifies a column to update and the value to update it to. Multiple calls to Set will add multiple columns to the SET clause of the UPDATE query.
-func (b *updateBuilder) Set(column string, value any) UpdateBuilder { // TODO(tjons): this needs to be able to accept more than just a single value, like setting a collection type...
+// Set specifies a column to update and the value to update it to.
+// Multiple calls to Set will add multiple columns to the SET clause of the UPDATE query.
+func (b *updateBuilder) Set(column string, value any) UpdateBuilder {
+	// TODO(tjons): this needs to be able to accept more than just a single value, like setting a collection type...
 	b.columns = append(b.columns, column)
 	b.columnValues = append(b.columnValues, value)
 	return b
 }
 
-// Where specifies a condition for the UPDATE query. Multiple calls to Where will be joined with AND in the resulting query.
+// Where specifies a condition for the UPDATE query.
+// Multiple calls to Where will be joined with AND in the resulting query.
 func (b *updateBuilder) Where(column string, ft filterTerm) UpdateBuilder {
 	ft.column = column
 	b.conditions = append(b.conditions, ft)
@@ -77,7 +85,8 @@ func (b *updateBuilder) IfExists() UpdateBuilder {
 	return b
 }
 
-// Build builds the UPDATE query and returns the query string and any error that occurred during building.
+// Build builds the UPDATE query and returns the query
+// string and any error that occurred during building.
 func (b *updateBuilder) Build() (string, error) {
 	return buildUpdateFrom(b)
 }

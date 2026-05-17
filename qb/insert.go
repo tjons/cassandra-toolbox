@@ -24,7 +24,8 @@ type InsertBuilder interface {
 
 	// Using specifies an optional USING clause for the INSERT query.
 	// This can be used to specify a USING TIMESTAMP or USING TTL clause.
-	// Multiple USING clauses can be specified, and they will be joined with AND in the resulting query.
+	// Multiple USING clauses can be specified, and they will be joined
+	// with AND in the resulting query.
 	// They will be added to the query in the order they were specified.
 	Using(updateParam) InsertBuilder
 }
@@ -50,7 +51,8 @@ func (b *insertBuilder) Into(table string) InsertBuilder {
 
 // Using specifies an optional USING clause for the INSERT query.
 // This can be used to specify a USING TIMESTAMP or USING TTL clause.
-// Multiple USING clauses can be specified, and they will be joined with AND in the resulting query.
+// Multiple USING clauses can be specified, and they will be joined
+// with AND in the resulting query.
 // They will be added to the query in the order they were specified.
 func (b *insertBuilder) Using(param updateParam) InsertBuilder {
 	b.using = append(b.using, param)
@@ -77,7 +79,8 @@ func (b *insertBuilder) IfNotExists() InsertBuilder {
 	return b
 }
 
-// Build builds the CQL query string for the insert statement and returns it along with any error that occurred during the build process.
+// Build builds the CQL query string for the insert statement and
+// returns it along with any error that occurred during the build process.
 func (b *insertBuilder) Build() (string, error) {
 	return buildInsertFrom(b)
 }
@@ -88,7 +91,8 @@ func (b *insertBuilder) ToCQL() string {
 	return cql
 }
 
-// QueryValues returns the values to be used in the query, in the order they were provided.
+// QueryValues returns the values to be used in the query,
+// in the order they were provided.
 func (b *insertBuilder) QueryValues() []any {
 	vals := make([]any, 0, len(b.values))
 	for _, v := range b.values {
