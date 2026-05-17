@@ -27,6 +27,8 @@ func updateParamTimestamp(timestamp int64) updateParam {
 }
 
 var (
-	TTL       = updateParamTTL
+	// TTL is a helper function for setting the TTL of an update or insert query.
+	TTL = updateParamTTL
+	// Timestamp is a helper function for setting the timestamp of an update, insert or delete query.
 	Timestamp = updateParamTimestamp
 )

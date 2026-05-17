@@ -1,15 +1,13 @@
 package qb
 
-type QueryType string
-
-const (
-	Insert QueryType = "INSERT"
-	Update QueryType = "UPDATE"
-	Select QueryType = "SELECT"
-	Delete QueryType = "DELETE"
-)
-
 type QueryBuilder interface {
+	// ToCQL returns the CQL query string. No validation is performed on the query during the build process.
+	ToCQL() string
+	// Build returns the CQL query string and any error encountered during the build process.
+	// A set of validation rules will be performed on the query during the build process,
+	// and any errors encountered will be returned.
 	Build() (string, error)
+
+	// QueryValues returns the values to be used in the query, based on values provided to the builder.
 	QueryValues() []any
 }

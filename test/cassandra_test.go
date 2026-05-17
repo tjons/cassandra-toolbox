@@ -54,7 +54,7 @@ func TestCassandra(t *testing.T) {
 			Into("test.table1").
 			Columns("entity_name", "entity_attribute_1").
 			Values("test_entity", "test_attribute")
-		iq, _ := insertQuery.Build()
+		iq := insertQuery.ToCQL()
 
 		if err := session.Query(iq, insertQuery.QueryValues()...).Exec(); err != nil {
 			t.Fatalf("failed to insert data: %v", err)
@@ -66,7 +66,7 @@ func TestCassandra(t *testing.T) {
 			From("test.table1").
 			Where("entity_attribute_1", qb.In(set...)).
 			AllowFiltering()
-		sq, _ := selectQuery.Build()
+		sq := selectQuery.ToCQL()
 
 		var results []string
 		scanner := session.Query(sq, selectQuery.QueryValues()...).Iter().Scanner()

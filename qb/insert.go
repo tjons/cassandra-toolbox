@@ -8,12 +8,25 @@ import (
 type InsertBuilder interface {
 	QueryBuilder
 
+	// Into specifies the table to insert into.
 	Into(table string) InsertBuilder
+
+	// Columns specifies the columns to insert values into.
 	Columns(columns ...string) InsertBuilder
+
+	// Values specifies the values to insert. The number of values provided
+	// should match the number of columns specified and will be used in the
+	// order they were provided.
 	Values(values ...any) InsertBuilder
+
+	// IfNotExists specifies that the INSERT query should include an IF NOT EXISTS clause.
 	IfNotExists() InsertBuilder
+
+	// Using specifies an optional USING clause for the INSERT query.
+	// This can be used to specify a USING TIMESTAMP or USING TTL clause.
+	// Multiple USING clauses can be specified, and they will be joined with AND in the resulting query.
+	// They will be added to the query in the order they were specified.
 	Using(updateParam) InsertBuilder
-	Build() (string, error)
 }
 
 type insertBuilder struct {
@@ -24,6 +37,7 @@ type insertBuilder struct {
 	ifNotExists bool
 }
 
+// NewInsert creates a new InsertBuilder.
 func NewInsert() InsertBuilder {
 	return &insertBuilder{}
 }
@@ -55,6 +69,11 @@ func (b *insertBuilder) IfNotExists() InsertBuilder {
 
 func (b *insertBuilder) Build() (string, error) {
 	return buildInsertFrom(b)
+}
+
+func (b *insertBuilder) ToCQL() string {
+	cql, _ := buildInsertFrom(b)
+	return cql
 }
 
 func (b *insertBuilder) QueryValues() []any {
@@ -103,18 +122,18 @@ func buildInsertFrom(b *insertBuilder) (string, error) {
 	sb.WriteString(")")
 
 	if b.ifNotExists {
-		sb.WriteString(" IF NOT EXISTS")
+		sb.WriteString(ifNotExistsFragment)
 	}
 
 	// TODO(tjons): refactor this into a common function if possible
 	for i := range b.using {
 		if i == 0 {
-			sb.WriteString(UsingFragment)
+			sb.WriteString(usingFragment)
 		} else {
-			sb.WriteString(AndFragment)
+			sb.WriteString(andFragment)
 		}
 		sb.WriteString(string(b.using[i].T))
-		sb.WriteString(SpaceFragment)
+		sb.WriteString(spaceFragment)
 		sb.WriteString(strconv.FormatInt(b.using[i].Arg, 10))
 	}
 

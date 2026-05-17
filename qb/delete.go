@@ -5,15 +5,26 @@ import (
 	"strings"
 )
 
+// DeleteBuilder builds DELETE queries.
 type DeleteBuilder interface {
 	QueryBuilder
 
+	// Column specifies a column to delete.
 	Column(column string) DeleteBuilder
+	// From specifies the table to delete from.
 	From(table string) DeleteBuilder
+
+	// Using specifies an optional USING clause for the DELETE query.
+	// This can be used to specify a USING TIMESTAMP clause.
+	// Multiple USING clauses can be specified, and they will be joined with AND in the resulting query.
+	// They will be added to the query in the order they were specified.
 	Using(updateParam) DeleteBuilder
+
+	// Where specifies a condition for the DELETE query. Multiple calls to Where will be joined with AND in the resulting query.
 	Where(column string, ft filterTerm) DeleteBuilder
+
+	// IfExists specifies that the DELETE query should include an IF EXISTS clause.
 	IfExists() DeleteBuilder
-	Build() (string, error)
 }
 
 type deleteBuilder struct {
@@ -25,6 +36,7 @@ type deleteBuilder struct {
 	queryValues []any
 }
 
+// NewDelete creates a new DeleteBuilder.
 func NewDelete() DeleteBuilder {
 	return &deleteBuilder{}
 }
@@ -63,6 +75,11 @@ func (b *deleteBuilder) Build() (string, error) {
 	return buildDeleteFrom(b)
 }
 
+func (b *deleteBuilder) ToCQL() string {
+	cql, _ := buildDeleteFrom(b)
+	return cql
+}
+
 func buildDeleteFrom(b *deleteBuilder) (string, error) {
 	var sb strings.Builder
 
@@ -81,12 +98,12 @@ func buildDeleteFrom(b *deleteBuilder) (string, error) {
 	// TODO(tjons): refactor this into a common function if possible
 	for i := range b.using {
 		if i == 0 {
-			sb.WriteString(UsingFragment)
+			sb.WriteString(usingFragment)
 		} else {
-			sb.WriteString(AndFragment)
+			sb.WriteString(andFragment)
 		}
 		sb.WriteString(string(b.using[i].T))
-		sb.WriteString(SpaceFragment)
+		sb.WriteString(spaceFragment)
 		sb.WriteString(strconv.FormatInt(b.using[i].Arg, 10))
 	}
 
