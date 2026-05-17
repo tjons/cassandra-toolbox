@@ -12,23 +12,27 @@ type SelectBuilder interface {
 	// Distinct specifies that the SELECT query should include a DISTINCT clause.
 	Distinct() SelectBuilder
 
-	// Json specifies that the SELECT query should include a JSON clause, which will return results as JSON objects instead of rows.
+	// Json specifies that the SELECT query should include a JSON clause,
+	// which will return results as JSON objects instead of rows.
 	Json() SelectBuilder
 
 	// ColumnAs specifies a column to select and an optional alias for that column.
 	// If an alias is provided, the resulting query will include an AS clause for that column.
 	ColumnAs(string, string) SelectBuilder
 
-	// Column specifies a column to select. Multiple calls to Column will add multiple columns to the SELECT clause.
+	// Column specifies a column to select. Multiple calls to Column
+	// will add multiple columns to the SELECT clause.
 	Column(string) SelectBuilder
 
-	// Columns specifies multiple columns to select. It is equivalent to calling Column for each column.
+	// Columns specifies multiple columns to select. It is equivalent to
+	// calling Column for each column.
 	Columns([]string) SelectBuilder
 
 	// From specifies the table to select from.
 	From(string) SelectBuilder
 
-	// Where specifies a condition for the SELECT query. Multiple calls to Where will be joined with AND in the resulting query.
+	// Where specifies a condition for the SELECT query.
+	// Multiple calls to Where will be joined with AND in the resulting query.
 	Where(string, filterTerm) SelectBuilder
 
 	// PerPartitionLimit specifies a PER PARTITION LIMIT for the SELECT query.
@@ -37,7 +41,8 @@ type SelectBuilder interface {
 	// Limit specifies a LIMIT for the SELECT query.
 	Limit(uint) SelectBuilder
 
-	// OrderBy specifies one or more columns to order the results by, along with the direction (ASC or DESC) for each column.
+	// OrderBy specifies one or more columns to order the results by,
+	// along with the direction (ASC or DESC) for each column.
 	OrderBy(...orderByClause) SelectBuilder
 
 	// GroupBy specifies one or more columns to group the results by.
@@ -47,6 +52,7 @@ type SelectBuilder interface {
 	AllowFiltering() SelectBuilder
 }
 
+// NewSelect creates a new SelectBuilder.
 func NewSelect() SelectBuilder {
 	return &selectBuilder{}
 }
@@ -71,18 +77,23 @@ type selectBuilder struct {
 	groupBy           []string
 }
 
+// Json specifies that the SELECT query should include a JSON clause,
+// which will return results as JSON objects instead of rows.
 func (b *selectBuilder) Json() SelectBuilder {
 	b.isJson = true
 
 	return b
 }
 
+// PerPartitionLimit specifies a PER PARTITION LIMIT for the SELECT query.
 func (b *selectBuilder) PerPartitionLimit(num uint) SelectBuilder {
 	b.perPartitionLimit = num
 
 	return b
 }
 
+// Column specifies a column to select. Multiple calls to Column
+// will add multiple columns to the SELECT clause.
 func (b *selectBuilder) Column(name string) SelectBuilder {
 	if b.retrieveColumns == nil {
 		b.retrieveColumns = make(map[string]string)
@@ -98,6 +109,7 @@ func (b *selectBuilder) Column(name string) SelectBuilder {
 	return b
 }
 
+// ColumnAs specifies a column to select and an optional alias for that column.
 func (b *selectBuilder) ColumnAs(name, alias string) SelectBuilder {
 	if b.retrieveColumns == nil {
 		b.retrieveColumns = make(map[string]string)
@@ -113,6 +125,8 @@ func (b *selectBuilder) ColumnAs(name, alias string) SelectBuilder {
 	return b
 }
 
+// Columns specifies multiple columns to select.
+// It is equivalent to calling Column for each column.
 func (b *selectBuilder) Columns(names []string) SelectBuilder {
 	if b.retrieveColumns == nil {
 		b.retrieveColumns = make(map[string]string)
@@ -125,12 +139,15 @@ func (b *selectBuilder) Columns(names []string) SelectBuilder {
 	return b
 }
 
+// From specifies the table to select from.
 func (b *selectBuilder) From(table string) SelectBuilder {
 	b.table = table
 
 	return b
 }
 
+// Where specifies a condition for the SELECT query.
+// Multiple calls to Where will be joined with AND in the resulting query.
 func (b *selectBuilder) Where(column string, ft filterTerm) SelectBuilder {
 	ft.column = column
 
@@ -139,16 +156,20 @@ func (b *selectBuilder) Where(column string, ft filterTerm) SelectBuilder {
 	return b
 }
 
+// Limit specifies a LIMIT for the SELECT query.
 func (b *selectBuilder) Limit(num uint) SelectBuilder {
 	b.limit = num
 
 	return b
 }
 
+// Build builds the CQL query string for the select statement and returns
+// it along with any error that occurred during the build process.
 func (b *selectBuilder) Build() (string, error) {
 	return buildSelectFrom(b)
 }
 
+// ToCQL builds the CQL query string for the select statement.
 func (b *selectBuilder) ToCQL() string {
 	cql, _ := buildSelectFrom(b)
 	return cql
@@ -263,26 +284,32 @@ func buildSelectFrom(b *selectBuilder) (string, error) {
 	return q.String(), nil
 }
 
+// AllowFiltering specifies that the SELECT query should include an ALLOW FILTERING clause.
 func (b *selectBuilder) AllowFiltering() SelectBuilder {
 	b.allowFiltering = true
 	return b
 }
 
+// Distinct specifies that the SELECT query should include a DISTINCT clause.
 func (b *selectBuilder) Distinct() SelectBuilder {
 	b.isDistinct = true
 	return b
 }
 
+// QueryValues returns the values to be used in the query, in the order they were provided.
 func (b *selectBuilder) QueryValues() []any {
 	return b.queryValues
 }
 
+// GroupBy specifies one or more columns to group the results by.
 func (b *selectBuilder) GroupBy(cols ...string) SelectBuilder {
 	b.groupBy = cols
 
 	return b
 }
 
+// OrderBy specifies one or more columns to order the results by,
+// along with the direction (ASC or DESC) for each column.
 func (b *selectBuilder) OrderBy(terms ...orderByClause) SelectBuilder {
 	b.orderBy = terms
 
@@ -304,7 +331,8 @@ type orderByClause struct {
 	dir    direction
 }
 
-// Writetime applies the WRITETIME function to a column, which returns the timestamp of when the column was last written to.
+// Writetime applies the WRITETIME function to a column,
+// which returns the timestamp of when the column was last written to.
 func Writetime(column string) string {
 	sb := strings.Builder{}
 	sb.WriteString(writetimeFragment)
@@ -315,7 +343,8 @@ func Writetime(column string) string {
 	return sb.String()
 }
 
-// MaxWritetime applies the MAXWRITETIME function to a column, which returns the maximum timestamp of when any cell in the column was last written to.
+// MaxWritetime applies the MAXWRITETIME function to a column,
+// which returns the maximum timestamp of when any cell in the column was last written to.
 func MaxWritetime(column string) string {
 	sb := strings.Builder{}
 	sb.WriteString(maxWritetimeFragment)
@@ -326,7 +355,8 @@ func MaxWritetime(column string) string {
 	return sb.String()
 }
 
-// Ttl applies the TTL function to a column, which returns the remaining time to live for the row value in seconds.
+// Ttl applies the TTL function to a column, which returns the
+// remaining time to live for the row value in seconds.
 func Ttl(column string) string {
 	sb := strings.Builder{}
 	sb.WriteString(ttlFragment)
