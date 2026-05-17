@@ -1,3 +1,8 @@
+[![Go Reference](https://pkg.go.dev/badge/github.com/tjons/cassandra-toolbox.svg)](https://pkg.go.dev/github.com/tjons/cassandra-toolbox)
+[![Go Report Card](https://goreportcard.com/badge/github.com/tjons/cassandra-toolbox)](https://goreportcard.com/report/github.com/tjons/cassandra-toolbox)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/tjons/cassandra-toolbox/blob/master/LICENSE)
+![Main pipeline](https://github.com/tjons/cassandra-toolbox/actions/workflows/main.yml/badge.svg)
+
 # cassandra-toolbox
 A collection of Go packages for making Apache Cassandra more developer-friendly in Go projects.
 
