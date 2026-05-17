@@ -1,27 +1,29 @@
 package qb
 
-type Operator string
+type operator string
 
 const (
-	EqualOperator       Operator = "="
-	LtOperator          Operator = "<"
-	GtOperator          Operator = ">"
-	LteOperator         Operator = "<="
-	GteOperator         Operator = ">="
-	NeqOperator         Operator = "!="
-	InOperator          Operator = "IN"
-	ContainsOperator    Operator = "CONTAINS"
-	ContainsKeyOperator Operator = "CONTAINS KEY"
+	EqualOperator       operator = "="
+	LtOperator          operator = "<"
+	GtOperator          operator = ">"
+	LteOperator         operator = "<="
+	GteOperator         operator = ">="
+	NeqOperator         operator = "!="
+	InOperator          operator = "IN"
+	ContainsOperator    operator = "CONTAINS"
+	ContainsKeyOperator operator = "CONTAINS KEY"
 )
 
 type filterTerm struct {
 	column     string
-	operator   Operator
+	operator   operator
 	value      any
 	values     []any
 	deepValues [][]any
 }
 
+// Equals is used to compare the column to a single value.
+// It will generate a filter term with the "=" operator.
 func Equals(value any) filterTerm {
 	return filterTerm{
 		operator: EqualOperator,
@@ -29,6 +31,8 @@ func Equals(value any) filterTerm {
 	}
 }
 
+// In is used to compare the column to multiple values.
+// It will generate a filter term with the "IN" operator.
 func In[T any](values ...T) filterTerm {
 	anyValues := make([]any, len(values))
 	for i, v := range values {
@@ -41,6 +45,8 @@ func In[T any](values ...T) filterTerm {
 	}
 }
 
+// CollectionIn is used to compare the column to multiple collection values.
+// It will generate a filter term with the "IN" operator.
 func CollectionIn(values ...[]any) filterTerm {
 	return filterTerm{
 		operator:   InOperator,
@@ -48,6 +54,8 @@ func CollectionIn(values ...[]any) filterTerm {
 	}
 }
 
+// Contains is used to check if a collection column contains a value.
+// It will generate a filter term with the "CONTAINS" operator.
 func Contains(value any) filterTerm {
 	return filterTerm{
 		operator: ContainsOperator,
@@ -55,6 +63,8 @@ func Contains(value any) filterTerm {
 	}
 }
 
+// ContainsKey is used to check if a map column contains a key.
+// It will generate a filter term with the "CONTAINS KEY" operator.
 func ContainsKey(value any) filterTerm {
 	return filterTerm{
 		operator: ContainsKeyOperator,
@@ -62,6 +72,8 @@ func ContainsKey(value any) filterTerm {
 	}
 }
 
+// LessThan is used to compare the column to a single value using the less than operator.
+// It will generate a filter term with the "<" operator.
 func LessThan(value any) filterTerm {
 	return filterTerm{
 		operator: LtOperator,
@@ -69,6 +81,8 @@ func LessThan(value any) filterTerm {
 	}
 }
 
+// GreaterThan is used to compare the column to a single value using the greater than operator.
+// It will generate a filter term with the ">" operator.
 func GreaterThan(value any) filterTerm {
 	return filterTerm{
 		operator: GtOperator,
@@ -76,6 +90,8 @@ func GreaterThan(value any) filterTerm {
 	}
 }
 
+// LessThanEqual is used to compare the column to a single value using the less than or equal operator.
+// It will generate a filter term with the "<=" operator.
 func LessThanEqual(value any) filterTerm {
 	return filterTerm{
 		operator: LteOperator,
@@ -83,6 +99,8 @@ func LessThanEqual(value any) filterTerm {
 	}
 }
 
+// GreaterThanEqual is used to compare the column to a single value using the greater than or equal operator.
+// It will generate a filter term with the ">=" operator.
 func GreaterThanEqual(value any) filterTerm {
 	return filterTerm{
 		operator: GteOperator,

@@ -5,15 +5,27 @@ import (
 	"strings"
 )
 
+// UpdateBuilder builds UPDATE queries.
 type UpdateBuilder interface {
 	QueryBuilder
 
+	// Using specifies an optional USING clause for the UPDATE query.
+	// This can be used to specify a USING TIMESTAMP or USING TTL clause.
+	// Multiple USING clauses can be specified, and they will be joined with AND in the resulting query.
+	// They will be added to the query in the order they were specified.
 	Using(updateParam) UpdateBuilder
+
+	// Table specifies the table to update.
 	Table(name string) UpdateBuilder
+
+	// Set specifies a column to update and the value to update it to. Multiple calls to Set will add multiple columns to the SET clause of the UPDATE query.
 	Set(column string, value any) UpdateBuilder
+
+	// Where specifies a condition for the UPDATE query. Multiple calls to Where will be joined with AND in the resulting query.
 	Where(condition string, value filterTerm) UpdateBuilder
+
+	// IfExists specifies that the UPDATE query should include an IF EXISTS clause.
 	IfExists() UpdateBuilder
-	Build() (string, error)
 }
 
 type updateBuilder struct {
@@ -26,6 +38,7 @@ type updateBuilder struct {
 	queryValues  []any
 }
 
+// NewUpdate creates a new UpdateBuilder.
 func NewUpdate() UpdateBuilder {
 	return &updateBuilder{}
 }
@@ -62,6 +75,11 @@ func (b *updateBuilder) Build() (string, error) {
 	return buildUpdateFrom(b)
 }
 
+func (b *updateBuilder) ToCQL() string {
+	cql, _ := buildUpdateFrom(b)
+	return cql
+}
+
 // TODO(tjons): clean this up, I don't think skippedLiteral* is as relevant for the UPDATE clause
 func (b *updateBuilder) QueryValues() []any {
 	// preallocate slice with the most elements we might need
@@ -96,12 +114,12 @@ func buildUpdateFrom(b *updateBuilder) (string, error) {
 	// TODO(tjons): refactor this into a common function if possible
 	for i := range b.using {
 		if i == 0 {
-			sb.WriteString(UsingFragment)
+			sb.WriteString(usingFragment)
 		} else {
-			sb.WriteString(AndFragment)
+			sb.WriteString(andFragment)
 		}
 		sb.WriteString(string(b.using[i].T))
-		sb.WriteString(SpaceFragment)
+		sb.WriteString(spaceFragment)
 		sb.WriteString(strconv.FormatInt(b.using[i].Arg, 10))
 	}
 

@@ -1,10 +1,55 @@
 package qb
 
 import (
-	"errors"
 	"strconv"
 	"strings"
 )
+
+// SelectBuilder builds SELECT queries.
+type SelectBuilder interface {
+	QueryBuilder
+
+	// Distinct specifies that the SELECT query should include a DISTINCT clause.
+	Distinct() SelectBuilder
+
+	// Json specifies that the SELECT query should include a JSON clause, which will return results as JSON objects instead of rows.
+	Json() SelectBuilder
+
+	// ColumnAs specifies a column to select and an optional alias for that column.
+	// If an alias is provided, the resulting query will include an AS clause for that column.
+	ColumnAs(string, string) SelectBuilder
+
+	// Column specifies a column to select. Multiple calls to Column will add multiple columns to the SELECT clause.
+	Column(string) SelectBuilder
+
+	// Columns specifies multiple columns to select. It is equivalent to calling Column for each column.
+	Columns([]string) SelectBuilder
+
+	// From specifies the table to select from.
+	From(string) SelectBuilder
+
+	// Where specifies a condition for the SELECT query. Multiple calls to Where will be joined with AND in the resulting query.
+	Where(string, filterTerm) SelectBuilder
+
+	// PerPartitionLimit specifies a PER PARTITION LIMIT for the SELECT query.
+	PerPartitionLimit(uint) SelectBuilder
+
+	// Limit specifies a LIMIT for the SELECT query.
+	Limit(uint) SelectBuilder
+
+	// OrderBy specifies one or more columns to order the results by, along with the direction (ASC or DESC) for each column.
+	OrderBy(...orderByClause) SelectBuilder
+
+	// GroupBy specifies one or more columns to group the results by.
+	GroupBy(...string) SelectBuilder
+
+	// AllowFiltering specifies that the SELECT query should include an ALLOW FILTERING clause.
+	AllowFiltering() SelectBuilder
+}
+
+func NewSelect() SelectBuilder {
+	return &selectBuilder{}
+}
 
 type selectBuilder struct {
 	cols []string
@@ -13,7 +58,6 @@ type selectBuilder struct {
 	// if no alias is set for a given column, the key will have an empty
 	// value.
 	retrieveColumns   map[string]string
-	verb              QueryType
 	table             string
 	filterTerms       []*filterTerm
 	limit             uint
@@ -102,21 +146,21 @@ func (b *selectBuilder) Limit(num uint) SelectBuilder {
 }
 
 func (b *selectBuilder) Build() (string, error) {
-	switch b.verb {
-	case Select:
-		return buildSelectFrom(b)
-	}
+	return buildSelectFrom(b)
+}
 
-	return "", errors.New("Not implemented")
+func (b *selectBuilder) ToCQL() string {
+	cql, _ := buildSelectFrom(b)
+	return cql
 }
 
 func buildSelectFrom(b *selectBuilder) (string, error) {
 	q := strings.Builder{}
-	q.WriteString(SelectFragment)
+	q.WriteString(selectFragment)
 	if b.isDistinct {
-		q.WriteString(DistinctFragment)
+		q.WriteString(distinctFragment)
 	} else if b.isJson {
-		q.WriteString(JsonFragment)
+		q.WriteString(jsonFragment)
 	}
 
 	for i, col := range b.cols { // ordinal is important for scanning
@@ -133,20 +177,20 @@ func buildSelectFrom(b *selectBuilder) (string, error) {
 		q.WriteString("*")
 	}
 
-	q.WriteString(FromFragment)
+	q.WriteString(fromFragment)
 	q.WriteString(b.table)
 
 	for i := range b.filterTerms {
 		if i == 0 {
-			q.WriteString(WhereFragment)
+			q.WriteString(whereFragment)
 		} else {
-			q.WriteString(AndFragment)
+			q.WriteString(andFragment)
 		}
 
 		q.WriteString(b.filterTerms[i].column)
-		q.WriteString(SpaceFragment)
+		q.WriteString(spaceFragment)
 		q.WriteString(string(b.filterTerms[i].operator))
-		q.WriteString(SpaceFragment)
+		q.WriteString(spaceFragment)
 
 		switch {
 		case b.filterTerms[i].value != nil:
@@ -177,7 +221,7 @@ func buildSelectFrom(b *selectBuilder) (string, error) {
 	}
 
 	if len(b.groupBy) > 0 {
-		q.WriteString(GroupByFragment)
+		q.WriteString(groupByFragment)
 
 		for i, col := range b.groupBy {
 			if i > 0 {
@@ -188,7 +232,7 @@ func buildSelectFrom(b *selectBuilder) (string, error) {
 	}
 
 	if len(b.orderBy) > 0 {
-		q.WriteString(OrderByFragment)
+		q.WriteString(orderByFragment)
 
 		for i, term := range b.orderBy {
 			if i > 0 {
@@ -201,17 +245,17 @@ func buildSelectFrom(b *selectBuilder) (string, error) {
 	}
 
 	if b.perPartitionLimit > 0 {
-		q.WriteString(PerPartitionLimitFragment)
+		q.WriteString(perPartitionLimitFragment)
 		q.WriteString(strconv.Itoa(int(b.perPartitionLimit)))
 	}
 
 	if b.limit > 0 {
-		q.WriteString(LimitFragment)
+		q.WriteString(limitFragment)
 		q.WriteString(strconv.Itoa(int(b.limit)))
 	}
 
 	if b.allowFiltering {
-		q.WriteString(AllowFilteringFragment)
+		q.WriteString(allowFilteringFragment)
 	}
 
 	// TODO(tjons): grab these builders from a mempool
@@ -248,7 +292,10 @@ func (b *selectBuilder) OrderBy(terms ...orderByClause) SelectBuilder {
 type direction string
 
 const (
-	Asc  direction = "ASC"
+	// Asc specifies that the results should be ordered in ascending order.
+	Asc direction = "ASC"
+
+	// Desc specifies that the results should be ordered in descending order.
 	Desc direction = "DESC"
 )
 
@@ -257,53 +304,35 @@ type orderByClause struct {
 	dir    direction
 }
 
-type SelectBuilder interface {
-	QueryBuilder
-
-	Distinct() SelectBuilder
-	Json() SelectBuilder
-	ColumnAs(string, string) SelectBuilder
-	Column(string) SelectBuilder
-	Columns([]string) SelectBuilder
-	From(string) SelectBuilder
-	Where(string, filterTerm) SelectBuilder
-	PerPartitionLimit(uint) SelectBuilder
-	Limit(uint) SelectBuilder
-	OrderBy(...orderByClause) SelectBuilder
-	GroupBy(...string) SelectBuilder
-	AllowFiltering() SelectBuilder
-}
-
-func NewSelect() SelectBuilder {
-	return &selectBuilder{verb: Select}
-}
-
+// Writetime applies the WRITETIME function to a column, which returns the timestamp of when the column was last written to.
 func Writetime(column string) string {
 	sb := strings.Builder{}
-	sb.WriteString(WritetimeFragment)
-	sb.WriteString(OpenParenFragment)
+	sb.WriteString(writetimeFragment)
+	sb.WriteString(openParenFragment)
 	sb.WriteString(column)
-	sb.WriteString(CloseParenFragment)
+	sb.WriteString(closeParenFragment)
 
 	return sb.String()
 }
 
+// MaxWritetime applies the MAXWRITETIME function to a column, which returns the maximum timestamp of when any cell in the column was last written to.
 func MaxWritetime(column string) string {
 	sb := strings.Builder{}
-	sb.WriteString(MaxWritetimeFragment)
-	sb.WriteString(OpenParenFragment)
+	sb.WriteString(maxWritetimeFragment)
+	sb.WriteString(openParenFragment)
 	sb.WriteString(column)
-	sb.WriteString(CloseParenFragment)
+	sb.WriteString(closeParenFragment)
 
 	return sb.String()
 }
 
+// Ttl applies the TTL function to a column, which returns the remaining time to live for the row value in seconds.
 func Ttl(column string) string {
 	sb := strings.Builder{}
-	sb.WriteString(TTLFragment)
-	sb.WriteString(OpenParenFragment)
+	sb.WriteString(ttlFragment)
+	sb.WriteString(openParenFragment)
 	sb.WriteString(column)
-	sb.WriteString(CloseParenFragment)
+	sb.WriteString(closeParenFragment)
 
 	return sb.String()
 }

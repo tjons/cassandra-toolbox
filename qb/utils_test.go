@@ -18,7 +18,7 @@ type testCase struct {
 func runTests(t *testing.T, testCases []testCase) {
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("TestUpdate: %s", tc.name), func(tt *testing.T) {
-			qry, _ := tc.builder.Build()
+			qry := tc.builder.ToCQL()
 			if qry == "" {
 				tt.Fatal("Failed to build update query")
 			}

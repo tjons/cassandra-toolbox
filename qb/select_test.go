@@ -117,7 +117,7 @@ func TestSelect(t *testing.T) {
 
 func BenchmarkSelectAll(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		queryStr, _ := qb.NewSelect().From("test").Build()
+		queryStr := qb.NewSelect().From("test").ToCQL()
 		if queryStr == "" {
 			b.Fatal("Failed to build query")
 		}
