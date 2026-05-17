@@ -19,6 +19,11 @@ type InsertBuilder interface {
 	// order they were provided.
 	Values(values ...any) InsertBuilder
 
+	// SetColumn specifies a column to include in the INSERT statement and the value to set it to.
+	// This is an alternative to using Columns and Values, and can be used to specify a column
+	// and an associated value.
+	SetColumn(column string, value any) InsertBuilder
+
 	// IfNotExists specifies that the INSERT query should include an IF NOT EXISTS clause.
 	IfNotExists() InsertBuilder
 
@@ -70,6 +75,15 @@ func (b *insertBuilder) Columns(columns ...string) InsertBuilder {
 // order they were provided.
 func (b *insertBuilder) Values(values ...any) InsertBuilder {
 	b.values = append(b.values, values...)
+	return b
+}
+
+// SetColumn specifies a column to include in the INSERT statement and the value to set it to.
+// This is an alternative to using Columns and Values, and can be used to specify a column
+// and an associated value.
+func (b *insertBuilder) SetColumn(column string, value any) InsertBuilder {
+	b.columns = append(b.columns, column)
+	b.values = append(b.values, value)
 	return b
 }
 

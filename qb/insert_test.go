@@ -32,6 +32,12 @@ func TestInsert(t *testing.T) {
 			builder:        qb.NewInsert().Into("test").Columns("column1", "column2").Values("value1", qb.CqlFunction("uuid()")),
 			expectedValues: []any{"value1"},
 		},
+		{
+			name:           "Insert with SetColumn",
+			expectedQuery:  "INSERT INTO test (column1, column2) VALUES (?, ?) IF NOT EXISTS",
+			builder:        qb.NewInsert().Into("test").SetColumn("column1", "value1").SetColumn("column2", "value2").IfNotExists(),
+			expectedValues: []any{"value1", "value2"},
+		},
 	}
 
 	runTests(t, cases)
