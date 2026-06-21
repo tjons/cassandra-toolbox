@@ -33,8 +33,18 @@ func TestRunMigrations(t *testing.T) {
 			t.Fatalf("failed to run migrations: %v", err)
 		}
 
-		if err := session.Query("DESCRIBE TABLE test.table1").Exec(); err != nil {
+		m := make(map[string]any)
+		if err := session.Query("DESCRIBE TABLE test.table1").MapScanContext(t.Context(), m); err != nil {
 			t.Fatalf("failed to verify migration: %v", err)
+		}
+
+		tn, ok := m["name"]
+		if !ok {
+			t.Fatalf("migration did not create expected table")
+		}
+
+		if tableName, ok := tn.(string); !ok || tableName != "table1" {
+			t.Fatalf("migration did not create expected table, got: %v", tn)
 		}
 	})
 }
