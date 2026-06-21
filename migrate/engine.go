@@ -88,25 +88,38 @@ func RunMigrations(ctx context.Context, keyspace string, session *gocql.Session,
 			fmt.Sprintf("SELECT checksum, succeeded FROM %s.%s WHERE name = ?", keyspace, MigrationsTableName),
 			migration.name,
 		).ScanContext(ctx, &existingChecksum, &succeeded)
-		if err != nil {
-			if !errors.Is(err, gocql.ErrNotFound) {
-				return fmt.Errorf("failed to query for existing migration %s: %w", migration.name, err)
-			}
-		} else {
+		if err != nil && !errors.Is(err, gocql.ErrNotFound) {
+			return fmt.Errorf("failed to query for existing migration %s: %w", migration.name, err)
+		}
+
+		if err == nil {
+			// If the migration was applied, but the checksum doesn't match,
+			// we should fail hard since the state of the database is unknown.
+			// This indicates that the migration file was modified after it
+			// was applied, which could lead to an inconsistent state if we were to re-apply it.
 			if existingChecksum != migration.hash {
 				return fmt.Errorf("migration %s has been modified since it was applied", migration.name)
 			}
+
+			// If the migration was applied but did not succeed,
+			// we should fail hard since the state of the database is unknown.
 			if !succeeded {
 				return fmt.Errorf("previous attempt to apply migration %s failed", migration.name)
 			}
+
+			// A nil error and a matching checksum with the succeeded flag
+			// means that the migration was already applied successfully, so we can skip it.
+			continue
 		}
 
+		// Parse the migration file into individual statements by splitting on semicolons.
 		stmts := make([][]byte, 0)
 		for i := 0; i < len(migration.contents); i++ {
 			if len(stmts) == 0 {
 				stmts = append(stmts, []byte{})
 			}
 
+			// TODO(tjons): parse comments out and ignore semicolons in comments and string literals
 			if migration.contents[i] == ';' {
 				stmts = append(stmts, []byte{})
 				continue
@@ -120,17 +133,43 @@ func RunMigrations(ctx context.Context, keyspace string, session *gocql.Session,
 				continue
 			}
 
-			if migrateErr := session.Query(string(stmts[i])).SetKeyspace(keyspace).Consistency(gocql.Quorum).ExecContext(ctx); migrateErr != nil {
-				if execErr := session.Query(
-					fmt.Sprintf("INSERT INTO %s.%s (name, checksum, succeeded, execution_completed) VALUES (?, ?, ?, toTimestamp(now()))", keyspace, MigrationsTableName),
-					migration.name, migration.hash, false,
-				).ExecContext(ctx); execErr != nil {
-					return fmt.Errorf("failed to record failed migration %s: %w (original error: %v)", migration.name, execErr, migrateErr)
+			// TODO(tjons): trim whitespace here
+			migrateErr := session.Query(string(stmts[i])).
+				SetKeyspace(keyspace).
+				Consistency(gocql.Quorum).
+				ExecContext(ctx)
+			if migrateErr != nil {
+				failureInsertStmt := fmt.Sprintf(
+					"INSERT INTO %s.%s (name, checksum, succeeded, execution_completed) VALUES (?, ?, ?, toTimestamp(now()))",
+					keyspace,
+					MigrationsTableName,
+				)
+
+				execErr := session.Query(
+					failureInsertStmt,
+					migration.name,
+					migration.hash,
+					false,
+				).ExecContext(ctx)
+
+				if execErr != nil {
+					// If the poor user finds their database in this situation,
+					// there's little we can do for them. At least try to provide
+					// as much information as possible about the sorry state of
+					// affairs.
+					return fmt.Errorf(
+						"failed to record failed migration %s: %w (original error: %v)",
+						migration.name,
+						execErr,
+						migrateErr,
+					)
 				}
+
 				return fmt.Errorf("failed to apply migration %s: %w", migration.name, migrateErr)
 			}
 		}
 
+		// If we successfully applied all statements in the migration, we should record that it succeeded.
 		if err := session.Query(
 			fmt.Sprintf("INSERT INTO %s.%s (name, checksum, succeeded, execution_completed) VALUES (?, ?, ?, toTimestamp(now()))", keyspace, MigrationsTableName),
 			migration.name, migration.hash, true,
