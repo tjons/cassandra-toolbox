@@ -51,7 +51,7 @@ func (p *QueryPaginator) Validate() error {
 
 func (p *QueryPaginator) BindToQuery(query *gocql.Query) *gocql.Query {
 	if p == nil {
-		return nil
+		return query
 	}
 
 	query = query.PageSize(int(p.PageSize))
